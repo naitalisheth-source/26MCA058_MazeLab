@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MazeLab: watch BFS and DFS solve your maze</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef0e6;--panel:#fbfcf6;--ink:#17231f;--mut:#5f6f68;--line:#d3d9c8;--acc:#0f766e;--accT:#fff;--open:#fbfcf6;--grid:#e1e6d6;--wall:#1f2d29;--front:#f08a24;--vis:#8fd0e8;--path:#ffd23f;--dot:#1f2d29;--start:#16a34a;--end:#d9366b;--warn:#b42318;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1714;--panel:#15221e;--ink:#e6f0ea;--mut:#8fa59b;--line:#25382f;--acc:#3dd6c3;--accT:#07211d;--open:#101c18;--grid:#1d2d27;--wall:#cfe0d8;--vis:#2f7a99;--dot:#17231f;--warn:#ff8a7a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1714;--panel:#15221e;--ink:#e6f0ea;--mut:#8fa59b;--line:#25382f;--acc:#3dd6c3;--accT:#07211d;--open:#101c18;--grid:#1d2d27;--wall:#cfe0d8;--vis:#2f7a99;--dot:#17231f;--warn:#ff8a7a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+h1,h2,.brand{font-family:"Bricolage Grotesque","IBM Plex Sans",sans-serif}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.brand{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0}
+.tag{color:var(--mut);flex:1;font-size:14px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--line)}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.grp label{font-size:13px;color:var(--mut)}
+.btn{border:1px solid var(--line);background:var(--bg);padding:7px 13px;border-radius:8px;cursor:pointer;font-weight:500}
+.btn:hover:not(:disabled){border-color:var(--acc)}
+.btn.pri{background:var(--acc);color:var(--accT);border-color:var(--acc);font-weight:600}
+.btn:disabled,select:disabled,input:disabled{opacity:.45;cursor:not-allowed}
+select{padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
+input[type=range]{accent-color:var(--acc);width:110px}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0}
+.app.noside{grid-template-columns:minmax(0,1fr)}
+.app.noside aside{display:none}
+main{padding:14px 18px 24px;min-width:0}
+#status{margin:0 0 12px;padding:9px 14px;border-radius:8px;border-left:5px solid var(--acc);background:var(--panel);font-weight:500}
+#status.bad{border-left-color:var(--warn);color:var(--warn)}
+#stage{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+figure{margin:0}
+figcaption{font-weight:600;margin-bottom:6px;font-family:"Bricolage Grotesque",sans-serif;font-size:18px}
+canvas{display:block;border:2px solid var(--wall);border-radius:6px;touch-action:none;cursor:crosshair;max-width:100%}
+aside{border-left:1px solid var(--line);background:var(--panel);padding:16px 18px;overflow:auto}
+aside h2{font-size:18px;margin:18px 0 8px}aside h2:first-child{margin-top:0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+td.n{font-variant-numeric:tabular-nums;font-weight:600}
+.lg{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:14px}
+.lg span{display:flex;align-items:center;gap:8px}
+.sw{width:20px;height:20px;border-radius:4px;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;color:#fff;flex:none}
+details{margin:8px 0;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+summary{cursor:pointer;font-weight:600}
+pre{margin:8px 0;white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace}
+textarea{width:100%;height:70px;font:12px ui-monospace,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--ink)}
+.mut{color:var(--mut);font-size:14px}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{border-left:0;border-top:1px solid var(--line)}.tag{display:none}header{justify-content:space-between}}
+</style></head>
+<body>
+<header><h1 class="brand">MazeLab</h1><span class="tag">Draw a maze. Watch BFS and DFS search it, step by step.</span>
+<button class="btn" id="theme" aria-label="Toggle light and dark theme">Theme</button>
+<button class="btn" id="side" aria-expanded="true" aria-controls="aside">Panel</button></header>
+<section class="bar" aria-label="Controls">
+<div class="grp"><label for="algo">Algorithm</label><select id="algo"><option value="bfs">BFS (queue)</option><option value="dfs">DFS (stack)</option></select>
+<label><input type="checkbox" id="cmp"> Compare BFS and DFS</label></div>
+<div class="grp"><button class="btn pri" id="run">Run</button><button class="btn" id="pause" disabled>Pause</button><button class="btn" id="step">Step</button><button class="btn" id="reset">Reset</button></div>
+<div class="grp"><button class="btn" id="gen">Generate maze</button><button class="btn" id="clr">Clear walls</button></div>
+<div class="grp"><label for="spd">Speed</label><input type="range" id="spd" min="1" max="5" value="3"><span class="mut" id="spdl">Medium</span></div>
+<div class="grp"><label for="rows">Rows <b id="rv">25</b></label><input type="range" id="rows" min="10" max="50" value="25">
+<label for="cols">Columns <b id="cv">40</b></label><input type="range" id="cols" min="10" max="80" value="40"></div>
+</section>
+<div class="app" id="app"><main>
+<p id="status" role="status" aria-live="polite">Click or drag on the grid to draw walls. Drag the green and red markers to move them.</p>
+<div id="stage">
+<figure id="f0"><figcaption id="l0"></figcaption><canvas aria-label="Maze grid. Draw walls with a pointer."></canvas></figure>
+<figure id="f1" hidden><figcaption id="l1"></figcaption><canvas aria-label="Second maze grid for comparison"></canvas></figure>
+</div></main>
+<aside id="aside">
+<h2>Statistics</h2><div id="stats"></div>
+<h2>Legend</h2>
+<div class="lg">
+<span><i class="sw" style="background:var(--open)"></i>Open</span><span><i class="sw" style="background:var(--wall)"></i>Wall</span>
+<span><i class="sw" style="background:var(--start)">&#9654;</i>Start</span><span><i class="sw" style="background:var(--end)">&#9678;</i>End</span>
+<span><i class="sw" style="background:var(--front)"></i>Frontier</span><span><i class="sw" style="background:var(--vis)"></i>Visited</span>
+<span><i class="sw" style="background:var(--path);color:#1f2d29">&#8226;</i>Final path</span></div>
+<h2>How it works</h2><div id="info"></div>
+<p class="mut">Neighbors are always checked in the order up, right, down, left, so every run repeats exactly. Movement is up, down, left and right only.</p>
+<h2>Share a maze</h2>
+<textarea id="json" aria-label="Maze JSON" placeholder="Export creates JSON here. Paste JSON and press Import."></textarea>
+<div class="grp"><button class="btn" id="exp">Export</button><button class="btn" id="imp">Import</button></div>
+</aside></div>
+<script>
+const $=s=>document.querySelector(s),NAMES={bfs:'BFS',dfs:'DFS'};
+const INFO={
+bfs:{n:'Breadth-First Search',d:'Queue (first in, first out)',g:'Always finds the shortest path in an unweighted maze. It expands evenly in all directions.',c:'Time O(V + E), space O(V)',
+p:'queue = [start]; seen = {start}\nwhile queue not empty:\n  cell = queue.dequeue()\n  if cell == end: stop\n  for n in neighbors(cell):\n    if n not seen:\n      seen.add(n); parent[n] = cell\n      queue.enqueue(n)\nrebuild path from parent pointers'},
+dfs:{n:'Depth-First Search',d:'Stack (last in, first out), iterative',g:'Finds a path if one exists, but not always the shortest. It dives down one route, then backtracks.',c:'Time O(V + E), space O(V)',
+p:'stack = [start]\nwhile stack not empty:\n  cell = stack.pop()\n  if cell seen: continue\n  mark seen\n  if cell == end: stop\n  for n in neighbors(cell):\n    if n not seen:\n      parent[n] = cell; stack.push(n)\nrebuild path from parent pointers'}};
+let R=25,C=40,W,st,en,CS=20,state='idle',last=0,acc=0,dirty=true,drag=null,mode=null;
+const dpr=Math.min(devicePixelRatio||1,2),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const boards=[0,1].map(i=>({cv:$('#f'+i+' canvas'),fig:$('#f'+i),lab:$('#l'+i),algo:i?'dfs':'bfs'}));
+boards.forEach(b=>b.ctx=b.cv.getContext('2d'));
+const cmp=()=>$('#cmp').checked,act=()=>cmp()?boards:[boards[0]],idx=(r,c)=>r*C+c;
+let col={};
+function readCols(){const s=getComputedStyle(document.documentElement);['open','grid','wall','front','vis','path','dot','start','end'].forEach(k=>col[k]=s.getPropertyValue('--'+k).trim());dirty=true}
+function nb(u){const r=u/C|0,c=u%C,o=[];
+if(r>0&&!W[u-C])o.push(u-C);if(c<C-1&&!W[u+1])o.push(u+1);if(r<R-1&&!W[u+C])o.push(u+C);if(c>0&&!W[u-1])o.push(u-1);return o}
+function solve(a){const t=performance.now(),par=new Int32Array(R*C).fill(-1),seen=new Uint8Array(R*C),ev=[];let found=false,vc=0;
+if(a==='bfs'){const q=[st];seen[st]=1;ev.push(st*3);
+for(let h=0;h<q.length;h++){const u=q[h];ev.push(u*3+1);vc++;if(u===en){found=true;break}
+for(const v of nb(u))if(!seen[v]){seen[v]=1;par[v]=u;q.push(v);ev.push(v*3)}}}
+else{const s=[[st,-1]];ev.push(st*3);
+while(s.length){const [u,p]=s.pop();if(seen[u])continue;seen[u]=1;par[u]=p;ev.push(u*3+1);vc++;if(u===en){found=true;break}
+const n=nb(u);for(let k=n.length-1;k>=0;k--)if(!seen[n[k]]){s.push([n[k],u]);ev.push(n[k]*3)}}}
+const ms=performance.now()-t,path=[];
+if(found)for(let u=en;u!==-1;u=par[u])path.push(u);
+path.reverse();path.forEach(i=>ev.push(i*3+2));
+return{ev,found,vc,len:path.length-1,ms}}
+function setGrid(r,c){R=r;C=c;W=new Uint8Array(R*C);st=idx(R>>1,2);en=idx(R>>1,C-3);$('#rv').textContent=R;$('#cv').textContent=C;$('#rows').value=R;$('#cols').value=C;clearViz();layout()}
+function clearViz(msg){state='idle';boards.forEach(b=>{b.vis=new Uint8Array(R*C);b.path=new Uint8Array(R*C);b.ev=[];b.i=0;b.res=null});
+setStatus(msg||'Click or drag on the grid to draw walls. Drag the green and red markers to move them.');ui();stats();dirty=true}
+function setStatus(t,bad){const s=$('#status');s.textContent=t;s.className=bad?'bad':''}
+function ui(){const run=state!=='idle';
+['algo','cmp','gen','clr','rows','cols','exp','imp'].forEach(i=>$('#'+i).disabled=run);
+if(cmp())$('#algo').disabled=true;
+$('#pause').disabled=!run;$('#pause').textContent=state==='paused'?'Resume':'Pause';$('#run').disabled=state==='running';$('#step').disabled=state==='running';
+boards.forEach(b=>b.lab.textContent=cmp()?NAMES[b.algo]:'');info()}
+function info(){const list=cmp()?['bfs','dfs']:[$('#algo').value];
+$('#info').innerHTML=list.map((k,i)=>{const d=INFO[k];return `<details ${i==0?'open':''}><summary>${d.n}</summary><p><b>Data structure:</b> ${d.d}<br>${d.g}<br><b>${d.c}</b></p><details><summary>Pseudocode</summary><pre>${d.p}</pre></details></details>`}).join('')}
+function stats(){const a=act(),f=(fn)=>a.map(b=>`<td class="n">${b.res&&b.fin?fn(b.res):'&mdash;'}</td>`).join('');
+$('#stats').innerHTML=`<table><tr><th></th>${a.map(b=>`<th>${NAMES[b.algo]}</th>`).join('')}</tr>
+<tr><th>Result</th>${f(r=>r.found?'Found':'No path')}</tr><tr><th>Cells visited</th>${f(r=>r.vc)}</tr>
+<tr><th>Path length</th>${f(r=>r.found?r.len:'&mdash;')}</tr><tr><th>Compute time</th>${f(r=>r.ms.toFixed(2)+' ms')}</tr></table>`}
+function begin(paused){act().forEach(b=>{if(!cmp())b.algo=$('#algo').value;if(cmp())b.algo=b===boards[0]?'bfs':'dfs';b.res=solve(b.algo);b.ev=b.res.ev;b.i=0;b.fin=false});
+state=paused?'paused':'running';last=performance.now();acc=0;setStatus('Searching\u2026');ui()}
+function advance(n){act().forEach(b=>{for(let k=0;k<n&&b.i<b.ev.length;k++){const e=b.ev[b.i++],i=e/3|0,t=e%3;
+if(t===0){if(!b.vis[i])b.vis[i]=2}else if(t===1)b.vis[i]=1;else b.path[i]=1}});dirty=true;
+if(act().every(b=>b.i>=b.ev.length))finish()}
+function finish(){state='idle';act().forEach(b=>b.fin=true);
+const m=act().map(b=>(cmp()?NAMES[b.algo]+': ':'')+(b.res.found?`Path found, length ${b.res.len}`:'No path found'));
+setStatus(m.join('. ')+'.',act().some(b=>!b.res.found));ui();stats()}
+function tick(ts){if(state==='running'){const M=[160,50,16,4,0][$('#spd').value-1];let n;
+if(reduce||!M)n=1e9;else{acc+=ts-last;n=Math.floor(acc/M);acc-=n*M;n=Math.min(n,400)}
+last=ts;if(n>0)advance(n)}
+if(dirty){dirty=false;act().forEach(draw)}requestAnimationFrame(tick)}
+function draw(b){const x=b.ctx;x.clearRect(0,0,C*CS,R*CS);x.lineWidth=1;x.strokeStyle=col.grid;
+for(let r=0;r<R;r++)for(let c=0;c<C;c++){const i=idx(r,c),px=c*CS,py=r*CS;
+x.fillStyle=W[i]?col.wall:b.path[i]?col.path:b.vis[i]===1?col.vis:b.vis[i]===2?col.front:col.open;x.fillRect(px,py,CS,CS);
+if(!W[i])x.strokeRect(px+.5,py+.5,CS,CS);
+if(b.path[i]&&i!==st&&i!==en){x.fillStyle=col.dot;x.beginPath();x.arc(px+CS/2,py+CS/2,Math.max(1.5,CS*.14),0,7);x.fill()}
+if(i===st){x.fillStyle=col.start;x.fillRect(px+1,py+1,CS-2,CS-2);x.fillStyle='#fff';x.beginPath();x.moveTo(px+CS*.35,py+CS*.25);x.lineTo(px+CS*.75,py+CS/2);x.lineTo(px+CS*.35,py+CS*.75);x.fill()}
+if(i===en){x.fillStyle=col.end;x.fillRect(px+1,py+1,CS-2,CS-2);x.strokeStyle='#fff';x.lineWidth=Math.max(1.5,CS*.1);x.beginPath();x.arc(px+CS/2,py+CS/2,CS*.25,0,7);x.stroke();x.lineWidth=1;x.strokeStyle=col.grid}}}
+function layout(){const n=cmp()?2:1,sw=$('#stage').clientWidth||innerWidth,wide=n==2&&sw>900,aw=(wide?sw/2-10:sw)-6,ah=Math.max(240,innerHeight-300)/((n==2&&!wide)?2:1);
+CS=Math.max(7,Math.min(Math.floor(aw/C),Math.floor(ah/R),30));
+boards.forEach(b=>{b.cv.style.width=C*CS+'px';b.cv.style.height=R*CS+'px';b.cv.width=C*CS*dpr;b.cv.height=R*CS*dpr;b.ctx.setTransform(dpr,0,0,dpr,0,0)});dirty=true}
+function cell(e){const r=e.target.getBoundingClientRect(),c=Math.floor((e.clientX-r.left)/CS),y=Math.floor((e.clientY-r.top)/CS);return c<0||y<0||c>=C||y>=R?-1:idx(y,c)}
+function edited(){if(boards[0].res)clearViz()}
+boards.forEach(b=>{b.cv.addEventListener('pointerdown',e=>{if(state!=='idle')return;const i=cell(e);if(i<0)return;edited();
+b.cv.setPointerCapture(e.pointerId);if(i===st)drag='s';else if(i===en)drag='e';else{drag='w';mode=W[i]?0:1;W[i]=mode}dirty=true});
+b.cv.addEventListener('pointermove',e=>{if(!drag)return;const i=cell(e);if(i<0)return;
+if(drag==='s'&&!W[i]&&i!==en)st=i;else if(drag==='e'&&!W[i]&&i!==st)en=i;else if(drag==='w'&&i!==st&&i!==en)W[i]=mode;dirty=true});
+['pointerup','pointercancel'].forEach(t=>b.cv.addEventListener(t,()=>drag=null))});
+function gen(){W.fill(1);const vis=new Uint8Array(R*C),stack=[idx(1,1)];W[stack[0]]=0;vis[stack[0]]=1;
+while(stack.length){const u=stack[stack.length-1],r=u/C|0,c=u%C,o=[];
+[[-2,0],[0,2],[2,0],[0,-2]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=1&&nr<=R-2&&nc>=1&&nc<=C-2&&!vis[idx(nr,nc)])o.push([nr,nc,dr/2,dc/2])});
+if(!o.length){stack.pop();continue}const [nr,nc,hr,hc]=o[Math.random()*o.length|0];
+W[idx(r+hr,c+hc)]=0;W[idx(nr,nc)]=0;vis[idx(nr,nc)]=1;stack.push(idx(nr,nc))}
+let er=R-2;if(er%2==0)er--;let ec=C-2;if(ec%2==0)ec--;st=idx(1,1);en=idx(er,ec);clearViz('New maze generated. Press Run to solve it.')}
+$('#run').onclick=()=>{if(state==='paused'){state='running';last=performance.now();ui()}else{clearViz();begin(false)}};
+$('#pause').onclick=()=>{state=state==='running'?'paused':'running';last=performance.now();ui()};
+$('#step').onclick=()=>{if(state==='idle'){clearViz();begin(true)}advance(1)};
+$('#reset').onclick=()=>clearViz('Visualization reset. Your walls are kept.');
+$('#clr').onclick=()=>{W.fill(0);clearViz('All walls removed.')};
+$('#gen').onclick=gen;
+$('#rows').oninput=e=>setGrid(+e.target.value,C);$('#cols').oninput=e=>setGrid(R,+e.target.value);
+$('#spd').oninput=e=>$('#spdl').textContent=['Slow','Gentle','Medium','Fast','Instant'][e.target.value-1];
+$('#algo').onchange=()=>{clearViz();};
+$('#cmp').onchange=()=>{boards[1].fig.hidden=!cmp();clearViz();layout()};
+$('#theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=d?'light':'dark';readCols()};
+$('#side').onclick=()=>{const h=$('#app').classList.toggle('noside');$('#side').setAttribute('aria-expanded',!h);layout()};
+$('#exp').onclick=()=>{$('#json').value=JSON.stringify({rows:R,cols:C,start:st,end:en,walls:[...W].flatMap((v,i)=>v?[i]:[])})};
+$('#imp').onclick=()=>{try{const d=JSON.parse($('#json').value);if(!(d.rows>=10&&d.rows<=50&&d.cols>=10&&d.cols<=80))throw 0;
+setGrid(d.rows,d.cols);d.walls.forEach(i=>{if(i>=0&&i<R*C)W[i]=1});st=d.start;en=d.end;W[st]=W[en]=0;clearViz('Maze imported.')}catch(_){setStatus('Could not import. Check that the JSON came from Export.',true)}};
+addEventListener('resize',layout);matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readCols);
+readCols();setGrid(25,40);requestAnimationFrame(tick);
+</script></body></html>
